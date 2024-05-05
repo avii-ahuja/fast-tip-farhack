@@ -1,3 +1,4 @@
+/** @jsxImportSource frog/jsx */
 import { init, useQuery, fetchQuery } from "@airstack/airstack-react";
 import BigNumber from "bignumber.js";
 
@@ -20,25 +21,24 @@ const tokenList = [
     }
 ];
 
-const createQuery = ({fid, tokenAddresses}: {fid: number, tokenAddresses: string[]}) => {
+const createQueryTokenBalances = ({owner, tokenAddresses}: {owner: string, tokenAddresses: string[]}) => {
     return `query MyQuery {
   TokenBalances(
-    input: {
-      filter: {
-        owner: { _in: ["fc_fid:${fid}"] },
-        tokenAddress: {
-          _in:${JSON.stringify(tokenAddresses)}
-        }
-      },
-      blockchain: base
-    }
+    input: {filter: {owner: {_in: "${owner}"}, tokenAddress: {_in: ${JSON.stringify(tokenAddresses)}}}, blockchain: base}
   ) {
     TokenBalance {
       amount
       tokenAddress
       token {
-        name
         decimals
+        logo {
+          small
+        }
+        symbol
+        name
+      }
+      owner {
+        addresses
       }
     }
   }
@@ -46,32 +46,60 @@ const createQuery = ({fid, tokenAddresses}: {fid: number, tokenAddresses: string
 `
 }
 
-export async function fetchTokenBalances(fid: number){
+const createQueryFid = (fid: number) => {
+    console.log({fid});
+    return `query MyQuery {
+  Socials(
+    input: {filter: {identity: {_in: ["fc_fid:${fid.toString()}"]}, dappName: {_eq: farcaster}}, blockchain: ethereum}
+  ) {
+    Social {
+      connectedAddresses {
+        address
+      }
+      dappName
+    }
+  }
+}`;
+}
+
+export async function getOwnerAddress(fid: number){
+    init(process.env.AIRSTACK_API_KEY);
+    const query = createQueryFid(fid);
+    console.log(query);
+    const {data, error} = await fetchQuery(query);
+    return data?.Socials?.Social[0]?.connectedAddresses[0]?.address ?? null;
+}
+
+export async function fetchTokenBalances(owner: string){
     init(process.env.AIRSTACK_API_KEY);
     const tokenAddresses = tokenList.map((token) => {return token.contract});
-    const query = createQuery({fid, tokenAddresses})
-    // console.log(query);
+    const query = createQueryTokenBalances({owner, tokenAddresses})
     const {data, error} = await fetchQuery(query);
     if(error){
         console.error(error);
     }
-    return data?.TokenBalances?.TokenBalance?.map((balance) => {
+    const balances = data?.TokenBalances?.TokenBalance?.map((balance) => {
         return {
             name: balance.token.name,
-            amount: BigNumber(balance.amount).div(BigNumber(10).exponentiatedBy(balance.token.decimals)).toString()
+            amount: BigNumber(balance.amount).div(BigNumber(10).exponentiatedBy(balance.token.decimals)),
+            tokenAddress: balance.tokenAddress,
+            symbol: balance.token.symbol,
+            imageUrl: balance.token.logo.small
         }
-    });
+    }) ?? [];
+    return {owner, balances};
     // return data?.TokenBalances;
 }
 
-export function getBalancesImage(balances: { name: string; amount: string }[]) {
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {balances.map((balance, index) => (
-                <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontWeight: 'bold', marginRight: 5 }}>{balance.name}</span>: {balance.amount}
-                </div>
-            ))}
+export function renderBalances(tokens: {owner: string, balances: { name: string; amount: string, tokenAddress: string , symbol: string, imageUrl: string}[]}){
+    const {owner, balances} = tokens;
+    console.log(JSON.stringify(tokens, null, 4));
+    const jsx = (
+        <div tw={'flex flex-col items-center justify-center text-3xl'}>
+            ${balances.map(balance => <img src={balance.imageUrl}> </img>)}
         </div>
-);
+    );
+
+    // Return JSX
+    return jsx;
 }
