@@ -2,6 +2,7 @@
 import { init, useQuery, fetchQuery } from "@airstack/airstack-react";
 import BigNumber from "bignumber.js";
 import {NeynarAPIClient} from "@neynar/nodejs-sdk";
+import {VStack, Box, Text, Image, HStack} from "@/app/ui";
 
 const tokenList = [
     {
@@ -64,23 +65,25 @@ const createQueryFid = (fid: number) => {
 }
 
 export async function getOwnerAddress(fid: number){
-    init(process.env.AIRSTACK_API_KEY);
+    init(process.env.AIRSTACK_API_KEY!);
     const query = createQueryFid(fid);
     console.log(query);
     const {data, error} = await fetchQuery(query);
+    //@ts-ignore
     return data?.Socials?.Social[0]?.connectedAddresses[0]?.address ?? null;
 }
 
-export const neynarClient = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+export const neynarClient = new NeynarAPIClient(process.env.NEYNAR_API_KEY!);
 
 export async function fetchTokenBalances(owner: string){
-    init(process.env.AIRSTACK_API_KEY);
+    init(process.env.AIRSTACK_API_KEY!);
     const tokenAddresses = tokenList.map((token) => {return token.contract});
     const query = createQueryTokenBalances({owner, tokenAddresses})
     const {data, error} = await fetchQuery(query);
     if(error){
         console.error(error);
     }
+    //@ts-ignore
     const balances = data?.TokenBalances?.TokenBalance?.map((balance) => {
         return {
             name: balance.token.name,
@@ -94,14 +97,48 @@ export async function fetchTokenBalances(owner: string){
     // return data?.TokenBalances;
 }
 
-export function renderBalances(tokens: {owner: string, balances: { name: string; amount: string, tokenAddress: string , symbol: string, imageUrl: string}[]}){
+export function renderBalances(tokens: {owner: string, balances: { name: string; amount: BigNumber, tokenAddress: string , symbol: string, imageUrl: string}[]}){
     const {owner, balances} = tokens;
     console.log(JSON.stringify(tokens, null, 4));
+    //@ts-ignore
     const jsx = (
-        <div tw={'flex flex-col items-center justify-center text-3xl'}>
-            ${balances.map(balance => <img src={balance.imageUrl ?? process.env.SAMPLE_TOKEN_URL}> </img>)}
-        </div>
-    );
+        <Box
+            grow
+            alignVertical="center"
+            backgroundColor="background"
+            padding="32"
+        >
+            <VStack gap="4">
+                <Text size="24">{owner.substring(0, 6)+"..."+owner.substring(owner.length-4)}</Text>
+                {balances.map((balance, index) => (
+                    <HStack
+                        key={index}
+                        grow
+                        width="100%"
+                        alignVertical="center"
+                        alignHorizontal="space-between"
+                    >
+                        <HStack alignVertical="center">
+                            <Image
+                                src={balance.imageUrl ?? process.env.SAMPLE_TOKEN_URL}
+                                height="30"
+                                width="30"
+                                borderRadius="40"
+                                alignSelf="center"
+                                paddingRight={'20'}
+                            />
+                            <Text size="20" alignSelf="center" paddingLeft="20">
+                                {balance.symbol}
+                            </Text>
+                        </HStack>
+                        <Text size="20" alignSelf="center">
+                            {balance.amount.toFixed(3)}
+                        </Text>
+                    </HStack>
+                ))}
+            </VStack>
+        </Box>
+    )
 
     // Return JSX
     return jsx;

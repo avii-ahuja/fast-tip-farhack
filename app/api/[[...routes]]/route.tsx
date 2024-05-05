@@ -9,21 +9,23 @@ import { encodeFunctionData, parseEther } from 'viem';
 import { serveStatic } from 'frog/serve-static'
 import {neynar} from "frog/middlewares";
 import {fetchTokenBalances, getOwnerAddress, renderBalances, neynarClient} from "@/utils";
+import {vars} from "@/app/ui";
 
-export const app = new Frog({
+
+//@ts-ignore
+const app = new Frog({
   assetsPath: '/',
   basePath: '/api',
+    ui: {vars}
   // Supply a Hub to enable frame verification.
 })
 
 const neynarMiddleware = neynar({
-    apiKey: process.env.NEYNAR_API_KEY,
+    apiKey: process.env.NEYNAR_API_KEY!,
     features: ['interactor', 'cast']
 })
 
 app.frame('/', (c: any) => {
-    // const { frameData, verified } = c
-    // console.log({frameData, verified});
     return c.res({
         image: (
             <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
@@ -32,7 +34,6 @@ app.frame('/', (c: any) => {
         ),
         intents: [
             <Button value={"wallet"} action={'/wallet'}>Tip from Wallet</Button>,
-            <Button value={"stats"}>Tip stats</Button>
         ]
     })
 })
@@ -41,26 +42,36 @@ app.frame('/', (c: any) => {
 app.frame('/wallet', neynarMiddleware, async (c) => {
     const { frameData } = c
     const cast = c.var.cast;
+    if(!cast){
+        throw new Error("cast not defined");
+    }
 
     const {parentAuthor, author} = cast;
     // console.log(JSON.stringify(frameData, null, 4));
     // console.log(JSON.stringify(cast, null, 4));
     const receiverFid = parentAuthor.fid || author.fid;
+    //@ts-ignore
     const receiverResult = await neynarClient.lookupUserByFid(receiverFid);
+    //@ts-ignore
     const receiver = receiverResult?.result?.user?.verifiedAddresses?.eth_addresses?.at(-1) || (await getOwnerAddress(receiverFid));
 
+    //@ts-ignore
     const {fid} = frameData;
+    //@ts-ignore
     const owner = author?.verifiedAddresses?.ethAddresses?.at(-1) || (await getOwnerAddress(fid));
     console.log({receiver, owner});
 
     const tokens = await fetchTokenBalances(owner as any);
-    // console.log({tokens});
     const imageHTML = renderBalances(tokens);
-    const buttons = tokens?.balances.map((token) => <Button.Transaction value={"stats"} target={`/transfer/${token.tokenAddress}/${receiver}`}>Tip {token.name} ({token.amount.decimalPlaces(3).toString()})</Button.Transaction>);
+
+    //@ts-ignore
+    const buttons = tokens?.balances.map((token) => <Button.Transaction value={"stats"} target={`/transfer/${token.tokenAddress}/${receiver}`}>Tip {token.name}</Button.Transaction>);
     return c.res({
         action: '/finish',
         image: imageHTML,
-        intents: [<TextInput placeholder="Enter amount to tip" />, ...buttons]
+        intents: [<TextInput placeholder="Enter amount to tip" />, ...buttons,
+            <Button value={""} action={'/'}>⬅️ Go Back</Button>,
+        ]
     })
 })
 
@@ -71,17 +82,16 @@ app.frame('/finish', (c) => {
             <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
                 Transaction ID: {transactionId}
             </div>
-        )
+        ),
+        intents: [<Button value={""} action={'/'}>⬅️ Reset</Button>]
     })
 })
 
 app.transaction('/transfer/:tokenAddress/:receiver', (c: any) => {
     const { inputText } = c
-    const {tokenAddress} = c.req.param();
+    const {tokenAddress, receiver} = c.req.param();
     console.log({inputText, tokenAddress})
 
-    //TODO: set receiver
-    let receiver = "0xA511e2b5298e27F6380cB044327005b82a4444C3"
     // Send transaction response.
     const data = encodeFunctionData({
         abi,
