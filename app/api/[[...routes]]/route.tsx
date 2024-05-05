@@ -28,7 +28,7 @@ const neynarMiddleware = neynar({
 app.frame('/', (c: any) => {
     return c.res({
         image: (
-            <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
+            <div style={{ color: 'white', display: 'flex', fontSize: 60 , justifyContent: "center", alignItems: "center"}}>
                 Tip this cast
             </div>
         ),
@@ -41,6 +41,7 @@ app.frame('/', (c: any) => {
 //@ts-ignore
 app.frame('/wallet', neynarMiddleware, async (c) => {
     const { frameData } = c
+    console.log(JSON.stringify(frameData, null, 4));
     const cast = c.var.cast;
     if(!cast){
         throw new Error("cast not defined");
@@ -79,7 +80,7 @@ app.frame('/finish', (c) => {
     const { transactionId } = c
     return c.res({
         image: (
-            <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
+            <div style={{ color: 'white', display: 'flex', fontSize: 60 , justifyContent: 'center', alignItems: 'center'}}>
                 Transaction ID: {transactionId}
             </div>
         ),
