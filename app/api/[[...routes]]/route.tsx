@@ -77,70 +77,55 @@
 import { Button, Frog, TextInput } from 'frog'
 import { devtools } from 'frog/dev'
 import { handle } from 'frog/next'
-import abi  from './abi'
+import abi  from '../../../abi'
 import {baseSepolia} from "viem/chains";
 import { encodeFunctionData, formatEther, parseEther } from 'viem';
 import { serveStatic } from 'frog/serve-static'
 import {neynar} from "frog/hubs";
+import {fetchTokenBalances, getBalancesImage} from "@/utils";
 // import { init, useQuery } from "@airstack/airstack-react";
 
 export const app = new Frog({
   assetsPath: '/',
   basePath: '/api',
   // Supply a Hub to enable frame verification.
-  hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
+  // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
 })
 
-// app.frame('/', (c: any) => {
-//     // const { frameData, verified } = c
-//     // console.log({frameData, verified});
-//     return c.res({
-//         action: '/submit',
-//         image: (
-//             <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
-//                 Tip this cast
-//             </div>
-//         ),
-//         intents: [
-//             <Button value={"wallet"}>Tip from Wallet</Button>,
-//             <Button value={"stats"}>Tip stats</Button>
-//         ]
-//     })
-// })
-//
-// app.frame('/submit', (c) => {
-//     const { buttonValue } = c
-//     return c.res({
-//         image: (
-//             <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
-//                 Selected: {buttonValue}
-//             </div>
-//         )
-//     })
-// })
-
-app.frame('/', (c) => {
-        return c.res({
-            image: (
-                <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
-                    Select your favorite fruit:
-                </div>
-            ),
-            intents: [
-                <Button value="apple">Apple</Button>,
-                <Button value="banana">Banana</Button>,
-                <Button value="mango">Mango</Button>
-            ]
-        })
-    })
-
-// Frame to display user's response.
-app.frame('/submit', (c) => {
-    const { buttonValue } = c
+app.frame('/', (c: any) => {
+    // const { frameData, verified } = c
+    // console.log({frameData, verified});
     return c.res({
         image: (
             <div style={{ color: 'white', display: 'flex', fontSize: 60 }}>
-                Selected: {buttonValue}
+                Tip this cast
+            </div>
+        ),
+        intents: [
+            <Button value={"wallet"} action={'/wallet'}>Tip from Wallet</Button>,
+            <Button value={"stats"}>Tip stats</Button>
+        ]
+    })
+})
+
+app.frame('/wallet', async (c) => {
+    const { frameData } = c
+    let {fid} = frameData;
+    //TODO: remove fid
+    fid = 15685
+    const tokens = await fetchTokenBalances(fid);
+    console.log({tokens});
+    const imageHTML = getBalancesImage(tokens);
+    console.log({imageHTML});
+    return c.res({
+        image: (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontWeight: 'bold', marginRight: 5 }}>degen</span>: 69
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontWeight: 'bold', marginRight: 5 }}>boomer</span>: 420
+                </div>
             </div>
         )
     })
