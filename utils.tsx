@@ -108,34 +108,32 @@ export function renderBalances(tokens: {owner: string, balances: { name: string;
             backgroundColor="background"
             padding="32"
         >
-            <VStack gap="4">
                 <Text size="24">{owner.substring(0, 6)+"..."+owner.substring(owner.length-4)}</Text>
-                {balances.map((balance, index) => (
-                    <HStack
-                        key={index}
-                        grow
-                        width="100%"
-                        alignVertical="center"
-                        alignHorizontal="space-between"
-                    >
-                        <HStack alignVertical="center">
-                            <Image
-                                src={balance.imageUrl ?? process.env.SAMPLE_TOKEN_URL}
-                                height="30"
-                                width="30"
-                                borderRadius="40"
-                                alignSelf="center"
-                                paddingRight={'20'}
-                            />
-                            <Text size="20" alignSelf="center" paddingLeft="20">
-                                {balance.symbol}
+            <VStack gap="4">
+                {(balances.map((balance, index) => (
+                        <HStack
+                            key={index}
+                            grow
+                            width="100%"
+                            alignVertical="center"
+                            alignHorizontal="space-between"
+                        >
+                            <HStack alignVertical="center">
+                                <Image
+                                    src={balance.imageUrl ?? process.env.SAMPLE_TOKEN_URL}
+                                    height="30"
+                                    width="30"
+                                    borderRadius="40"
+                                />
+                                <Text size="20">
+                                    {balance.symbol}
+                                </Text>
+                            </HStack>
+                            <Text size="20">
+                                {balance.amount.toFixed(3)}
                             </Text>
                         </HStack>
-                        <Text size="20" alignSelf="center">
-                            {balance.amount.toFixed(3)}
-                        </Text>
-                    </HStack>
-                ))}
+                    )))}
             </VStack>
         </Box>
     )
