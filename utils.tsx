@@ -1,6 +1,7 @@
 /** @jsxImportSource frog/jsx */
 import { init, useQuery, fetchQuery } from "@airstack/airstack-react";
 import BigNumber from "bignumber.js";
+import {NeynarAPIClient} from "@neynar/nodejs-sdk";
 
 const tokenList = [
     {
@@ -70,6 +71,8 @@ export async function getOwnerAddress(fid: number){
     return data?.Socials?.Social[0]?.connectedAddresses[0]?.address ?? null;
 }
 
+export const neynarClient = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+
 export async function fetchTokenBalances(owner: string){
     init(process.env.AIRSTACK_API_KEY);
     const tokenAddresses = tokenList.map((token) => {return token.contract});
@@ -96,7 +99,7 @@ export function renderBalances(tokens: {owner: string, balances: { name: string;
     console.log(JSON.stringify(tokens, null, 4));
     const jsx = (
         <div tw={'flex flex-col items-center justify-center text-3xl'}>
-            ${balances.map(balance => <img src={balance.imageUrl}> </img>)}
+            ${balances.map(balance => <img src={balance.imageUrl ?? process.env.SAMPLE_TOKEN_URL}> </img>)}
         </div>
     );
 

@@ -5,10 +5,10 @@ import { devtools } from 'frog/dev'
 import { handle } from 'frog/next'
 import abi  from '../../../abi'
 import {base} from "viem/chains";
-import { encodeFunctionData, formatEther, parseEther } from 'viem';
+import { encodeFunctionData, parseEther } from 'viem';
 import { serveStatic } from 'frog/serve-static'
 import {neynar} from "frog/middlewares";
-import {fetchTokenBalances, getOwnerAddress, renderBalances} from "@/utils";
+import {fetchTokenBalances, getOwnerAddress, renderBalances, neynarClient} from "@/utils";
 
 export const app = new Frog({
   assetsPath: '/',
@@ -17,7 +17,7 @@ export const app = new Frog({
 })
 
 const neynarMiddleware = neynar({
-    apiKey: '',
+    apiKey: process.env.NEYNAR_API_KEY,
     features: ['interactor', 'cast']
 })
 
@@ -37,17 +37,26 @@ app.frame('/', (c: any) => {
     })
 })
 
-app.frame('/wallet', async (c) => {
+//@ts-ignore
+app.frame('/wallet', neynarMiddleware, async (c) => {
     const { frameData } = c
+    const cast = c.var.cast;
+
+    const {parentAuthor, author} = cast;
+    // console.log(JSON.stringify(frameData, null, 4));
+    // console.log(JSON.stringify(cast, null, 4));
+    const receiverFid = parentAuthor.fid || author.fid;
+    const receiverResult = await neynarClient.lookupUserByFid(receiverFid);
+    const receiver = receiverResult?.result?.user?.verifiedAddresses?.eth_addresses?.at(-1) || (await getOwnerAddress(receiverFid));
 
     const {fid} = frameData;
-    // const owner = await getOwnerAddress(fid);
-    //TODO: change owner
-    const owner = "0x71dFBcf277b52c02C67Dc7f701C6D6Cb040A809C";
+    const owner = author?.verifiedAddresses?.ethAddresses?.at(-1) || (await getOwnerAddress(fid));
+    console.log({receiver, owner});
+
     const tokens = await fetchTokenBalances(owner as any);
-    console.log({tokens});
+    // console.log({tokens});
     const imageHTML = renderBalances(tokens);
-    const buttons = tokens?.balances.map((token) => <Button.Transaction value={"stats"} target={`/transfer/${token.tokenAddress}`}>Tip {token.name} ({token.amount.decimalPlaces(3).toString()})</Button.Transaction>);
+    const buttons = tokens?.balances.map((token) => <Button.Transaction value={"stats"} target={`/transfer/${token.tokenAddress}/${receiver}`}>Tip {token.name} ({token.amount.decimalPlaces(3).toString()})</Button.Transaction>);
     return c.res({
         action: '/finish',
         image: imageHTML,
@@ -66,7 +75,7 @@ app.frame('/finish', (c) => {
     })
 })
 
-app.transaction('/transfer/:tokenAddress', (c: any) => {
+app.transaction('/transfer/:tokenAddress/:receiver', (c: any) => {
     const { inputText } = c
     const {tokenAddress} = c.req.param();
     console.log({inputText, tokenAddress})
